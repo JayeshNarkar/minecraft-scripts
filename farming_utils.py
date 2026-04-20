@@ -86,6 +86,18 @@ def move_sequence(*move_objects):
     stop_movement_and_attack()
 
 
+def move_forward_left_and_attack():
+    ms.player_press_forward(True)
+    ms.player_press_left(True)
+    ms.player_press_attack(True)
+
+
+def move_forward_right_and_attack():
+    ms.player_press_forward(True)
+    ms.player_press_right(True)
+    ms.player_press_attack(True)
+
+
 def crop_route(
     common_x, start_z, end_z, init_y, first_movement_fun, second_movement_fun, move_till
 ):
