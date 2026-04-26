@@ -4,3 +4,4 @@ __pycache__/
 config.txt
 logs.txt
 .env
+*.png
