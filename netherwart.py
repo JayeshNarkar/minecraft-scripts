@@ -1,14 +1,20 @@
 import minescript as ms
 import time
 from farming_utils import (
+    kill_nearby_pests,
     stop_movement_and_attack,
     crop_route,
     move_left_and_attack,
     move_right_and_attack,
     check_farming_conditions,
+    send_discord_message,
 )
+from player_utils import smooth_orientation
 
 YAW, PITCH = 90, 5.35
+
+VACCUM_SLOT = 2
+HOE_SLOT = 1
 
 # ACCEPTABLE_DISPLACEMENT=1
 
@@ -20,21 +26,27 @@ def move_till(movement_fun, dest_x, dest_z, dest_y=None, ACCEPTABLE_DISPLACEMENT
     movement_fun()
     while True:
         check_farming_conditions(YAW, PITCH, dest_y, ACCEPTABLE_DISPLACEMENT)
-        x, y, z = ms.player_position()
+        x, _, z = ms.player_position()
+
+        kill_nearby_pests(VACCUM_SLOT, HOE_SLOT, movement_fun, YAW, PITCH)
+
         if int(x) == dest_x and int(z) == dest_z:
             stop_movement_and_attack()
             break
 
 
 def main():
+    count = 0
     start_z, end_z = -238, 238
     common_x = -66
     start_y = 75
 
     while True:
+        count += 1
+        send_discord_message(f"Starting wheat farming run #{count}", mention=False)
         ms.execute("warp garden")
         time.sleep(2.0)
-        ms.player_set_orientation(YAW, PITCH)
+        smooth_orientation(YAW, PITCH)
 
         crop_route(
             common_x,

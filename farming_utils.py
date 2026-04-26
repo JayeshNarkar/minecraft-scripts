@@ -1,7 +1,65 @@
 import minescript as ms
 import time
-import sys
-from playsound3 import playsound
+import math
+import re
+from player_utils import (
+    exit_fun,
+    send_discord_message,
+    smooth_look_at,
+    smooth_orientation,
+)
+
+
+PESTS = [
+    "Fly",
+    "Cricket",
+    "Locust",
+    "Rat",
+    "Mosquito",
+    "Earthworm",
+    "Mite",
+    "Moth",
+    "Slug",
+    "Beetle",
+    "Praying Mantis",
+    "Dragonfly",
+]
+
+
+def clean_entity_name(name):
+    if not name:
+        return ""
+
+    # Remove Minecraft color codes (§ followed by hex digit)
+    cleaned = re.sub(r"§[0-9a-fk-or]", "", name)
+
+    # Remove everything that isn't basic printable ASCII
+    cleaned = re.sub(r"[^\x20-\x7E]", "", cleaned)
+
+    # Remove extra whitespace
+    cleaned = " ".join(cleaned.split())
+
+    if cleaned.endswith("600"):
+        return cleaned[:-3].strip()  # remove "600" from end
+    else:
+        return ""
+
+
+def contains_pest_name(entity_name):
+    cleaned = clean_entity_name(entity_name).lower()
+
+    for pest in PESTS:
+        if pest.lower() in cleaned:
+            return pest
+    return None
+
+
+def distance_calculator(playerPos, entityPos):
+    return math.sqrt(
+        (playerPos[0] - entityPos[0]) ** 2
+        + (playerPos[1] - entityPos[1]) ** 2
+        + (playerPos[2] - entityPos[2]) ** 2
+    )
 
 
 def stop_movement_and_attack():
@@ -44,11 +102,8 @@ def move_upward():
     ms.player_press_jump(True)
 
 
-def exit_fun(statement):
-    stop_movement_and_attack()
-    playsound("./minescript/gong_sound.mp3")
-    ms.echo(statement)
-    sys.exit(0)
+def move_forward():
+    ms.player_press_forward(True)
 
 
 def check_farming_conditions(
@@ -62,7 +117,9 @@ def check_farming_conditions(
 
     player_yaw, player_pitch = ms.player_orientation()
     if target_yaw != player_yaw and target_pitch != player_pitch:
-        exit_fun("Pitch or yaw changed!")
+        exit_fun(
+            f"Pitch or yaw changed! got {player_yaw}, {player_pitch}. Expected {target_yaw}, {target_pitch}."
+        )
 
     hand = ms.player_hand_items()
     item = hand.main_hand.get("item")
@@ -72,7 +129,7 @@ def check_farming_conditions(
 
     _, y, _ = ms.player_position()
     if abs(int(y) - target_y_level) > acceptable_displacement:
-        exit_fun(f"Y level changed! Expected {target_y_level}, got {int(y)}")
+        exit_fun(f"Y level changed! Expected {target_y_level}, got {int(y)}.")
 
 
 def move_sequence(*move_objects):
@@ -96,6 +153,32 @@ def move_forward_right_and_attack():
     ms.player_press_forward(True)
     ms.player_press_right(True)
     ms.player_press_attack(True)
+
+
+def move_right_forward_and_attack():
+    ms.player_press_right(True)
+    ms.player_press_forward(True)
+    ms.player_press_attack(True)
+
+
+def move_left_forward_and_attack():
+    ms.player_press_left(True)
+    ms.player_press_forward(True)
+    ms.player_press_attack(True)
+
+
+def flower_sugar_route(init_x, start_z, end_z, move_till):
+    move_till(move_backward_and_attack, init_x, end_z)
+    move_sequence(
+        {"function": move_left_and_attack, "delay": 1},
+    )
+    move_sequence(
+        {"function": move_right_and_attack, "delay": 0.5},
+    )
+    move_till(move_right_forward_and_attack, init_x - 3, start_z)
+    move_sequence(
+        {"function": move_forward, "delay": 1},
+    )
 
 
 def crop_route(
@@ -130,3 +213,33 @@ def crop_route(
         {"function": second_movement_fun, "delay": 0.5},
         {"function": move_downward, "delay": 1.5},
     )
+
+
+def kill_nearby_pests(
+    VACCUM_SLOT,
+    HOE_SLOT,
+    move_fun,
+    YAW=90,
+    PITCH=0,
+    killed_pests=None,
+    detection_range=15,
+):
+    entities = ms.get_entities(max_distance=detection_range, sort="nearest")
+
+    for entity in entities:
+        if contains_pest_name(entity.name):
+            killed_pests.add(entity.uuid)
+            stop_movement_and_attack()
+            send_discord_message(
+                f"Killing pest: {clean_entity_name(entity.name)}. Count: {len(killed_pests)}",
+                mention=False,
+            )
+            ms.player_inventory_select_slot(VACCUM_SLOT)
+            smooth_look_at(entity.position[0], entity.position[1], entity.position[2])
+            ms.player_press_use(True)
+            time.sleep(4)
+            ms.player_press_use(False)
+
+            smooth_orientation(YAW, PITCH)
+            ms.player_inventory_select_slot(HOE_SLOT)
+            move_fun()

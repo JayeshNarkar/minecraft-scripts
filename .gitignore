@@ -3,3 +3,4 @@ blockpacks/
 __pycache__/
 config.txt
 logs.txt
+.env
