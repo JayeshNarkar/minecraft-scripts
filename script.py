@@ -1,6 +1,6 @@
 import math
 import threading
-from farming_utils import kill_nearby_pests
+from farming_utils import auto_pet_rule, kill_nearby_pests
 import minescript as ms
 import os
 import re
@@ -13,6 +13,8 @@ import sys
 LOG_FILE = "minescript/logs.txt"
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
+state = {"current_pet": None}
+
 
 def clean_message(msg):
     return msg.encode("utf-8", errors="ignore").decode("utf-8")
@@ -24,10 +26,7 @@ def log_to_file(statement):
 
 
 if __name__ == "__main__":
-    threading.Thread(target=chat_listener_thread, daemon=True).start()
-    while True:
-        pass
-
+    auto_pet_rule(lambda: None, state)
     # try:
     #     minecraft = ms.java_class("net.minecraft.class_310")
     #     member = ms.java_member(minecraft, "getInstance")

@@ -1,3 +1,4 @@
+import queue
 import threading
 import minescript as ms
 import time
@@ -9,19 +10,23 @@ from farming_utils import (
     kill_nearby_pests,
     move_downward,
     move_upward,
+    sell_item_if_full,
     stop_movement_and_attack,
     check_farming_conditions,
     send_discord_message,
     move_right_and_attack,
+    auto_pet_rule,
+    use_spray,
 )
 from player_utils import chat_listener_thread, key_listener_thread, smooth_orientation
 
 YAW, PITCH = -90, 5.35
 
-VACCUM_SLOT = 2
-HOE_SLOT = 1
+state = {"current_pet": None}
 
 killed_pests = set()
+
+chat_queue = queue.Queue(maxsize=10)
 
 
 def move_till(movement_fun, dest_x, dest_z, dest_y=None, ACCEPTABLE_DISPLACEMENT=1):
@@ -30,9 +35,12 @@ def move_till(movement_fun, dest_x, dest_z, dest_y=None, ACCEPTABLE_DISPLACEMENT
         dest_y = int(current_y)
     movement_fun()
     while True:
+        sell_item_if_full(movement_fun)
+        use_spray(movement_fun)
         check_farming_conditions(YAW, PITCH, dest_y, ACCEPTABLE_DISPLACEMENT)
+        auto_pet_rule(chat_queue, movement_fun, state)
         global killed_pests
-        kill_nearby_pests(VACCUM_SLOT, HOE_SLOT, movement_fun, YAW, PITCH, killed_pests)
+        kill_nearby_pests(movement_fun, YAW, PITCH, killed_pests)
         x, _, z = ms.player_position()
         if int(x) == dest_x and int(z) == dest_z:
             stop_movement_and_attack()
@@ -79,7 +87,9 @@ def wheat_route_reverse(curr_x, start_z, end_z):
 
 def main():
     threading.Thread(target=key_listener_thread, daemon=True).start()
-    threading.Thread(target=chat_listener_thread, daemon=True).start()
+    threading.Thread(
+        target=chat_listener_thread, args=(chat_queue,), daemon=True
+    ).start()
     count = 0
     start_z, end_z = 48, 143
     init_x, end_x = 144, 234

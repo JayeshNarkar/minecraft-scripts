@@ -1,14 +1,15 @@
 import os
 import random
+import re
 import minescript as ms
 import time
 import math
 import sys
-from playsound3 import playsound
 import psutil
 import requests
 import os
 from dotenv import load_dotenv
+import queue
 
 load_dotenv()
 
@@ -37,7 +38,11 @@ tiers = [
     "woah",
     "admin",
     "leveled",
-    ":",
+    "autopet",
+    "yuck",
+    "salt",
+    "overflow",
+    "selling",
 ]
 
 
@@ -52,18 +57,37 @@ def key_listener_thread():
                 os._exit(1)
 
 
-def chat_listener_thread():
+def clean_message(msg):
+    if not msg:
+        return ""
+    # fix mojibake: Â§ is a mangled §
+    msg = msg.replace("Â§", "§").replace("Â", "")
+    # strip minecraft color codes
+    msg = re.sub(r"§[0-9a-fk-or]", "", msg)
+    # strip remaining non-ascii garbage
+    msg = re.sub(r"[^\x20-\x7E]", "", msg)
+    return msg.strip()
+
+
+def chat_listener_thread(chat_queue):
     with ms.EventQueue() as event_queue:
         event_queue.register_chat_listener()
         while True:
             event = event_queue.get()
             if event.type == ms.EventType.CHAT:
+                cleaned = clean_message(event.message)
                 msg = event.message.lower()
+                try:
+                    chat_queue.put(event.message)
+                except queue.Full:
+                    chat_queue.get_nowait()  # drop oldest
+                    chat_queue.put_nowait(cleaned)
                 if "[sacks]" not in msg:
+                    no_mention = "[npc]" in msg or "[skyhanni]" in msg
                     if ":" in msg:
-                        send_discord_message(event.message)
+                        send_discord_message(cleaned, mention=not no_mention)
                     elif any(tier in msg for tier in tiers):
-                        send_discord_message(event.message, mention=False)
+                        send_discord_message(cleaned, mention=False)
 
 
 def stop_movement_and_attack():
