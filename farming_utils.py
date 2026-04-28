@@ -41,6 +41,7 @@ PESTS = [
     "Beetle",
     "Praying Mantis",
     "Dragonfly",
+    "Firefly",
 ]
 
 
@@ -299,19 +300,11 @@ def sell_item_if_full(move_fun):
     stop_movement_and_attack()
     ms.execute("desk")
     time.sleep(2)
-
-    # items = ms.container_get_items()
-    # if items is None:
-    #     ms.echo("Failed to open desk, resuming...")
-    #     move_fun()
-    #     return
-
-    # ms.echo("Waiting for SkyMart seller to finish...")
     while ms.container_get_items() is not None:
         time.sleep(0.5)
 
     ms.echo("Selling done, resuming...")
-    time.sleep(2.5 + random.uniform(0, 0.5))
+    time.sleep(1.5 + random.uniform(0, 0.5))
     move_fun()
 
 
