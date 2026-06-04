@@ -1,6 +1,8 @@
 import os
 import queue
 import random
+from playsound3 import playsound
+
 import minescript as ms
 import time
 import math
@@ -46,7 +48,7 @@ PESTS = [
 
 
 def clean_entity_name(name):
-    if not name:
+    if not name or "rattly" in name.lower() or "lv" in name.lower():
         return ""
 
     # Remove Minecraft color codes (§ followed by hex digit)
@@ -293,19 +295,71 @@ def read_inventory_status():
         return "not_full"
 
 
+container_movement_info = {"movement_fun": None, "container_open": False}
+
+
+def container_watcher_thread():
+    while True:
+        if ms.container_get_items() is not None:
+            if not container_movement_info["container_open"]:
+                container_movement_info["container_open"] = True
+                stop_movement_and_attack()
+                ms.echo("Container opened, pausing movement...")
+
+            while ms.container_get_items() is not None:
+                time.sleep(0.1)
+
+            while True:
+                hand = ms.player_hand_items()
+                item = hand.main_hand.get("item")
+                if "hoe" in item or "axe" in item:
+                    break
+                time.sleep(0.1)
+
+            container_movement_info["container_open"] = False
+            ms.echo("Container closed, resuming...")
+            time.sleep(2 + random.uniform(0, 5))
+            if container_movement_info["movement_fun"] is not None:
+                container_movement_info["movement_fun"]()
+
+        time.sleep(0.05)
+
+
+def low_sack_listener_thread():
+    with ms.EventQueue() as event_queue:
+        event_queue.register_chat_listener()
+        while True:
+            event = event_queue.get()
+            if event.type == ms.EventType.CHAT:
+                msg = event.message.lower()
+                if "[sacks]" in msg:
+                    # check for +1 to +4
+                    for i in range(1, 5):
+                        if f"+{i} " in msg:
+                            ms.echo(
+                                f"Low sack count detected ({'+'+str(i)}), re-attacking..."
+                            )
+                            ms.player_press_attack(False)
+                            time.sleep(0.1)
+                            ms.player_press_attack(True)
+                            break
+
+
 def sell_item_if_full(move_fun):
     if read_inventory_status() != "full":
         return
-
+    playsound("./minescript/gong_sound.mp3")
+    ms.echo("Starting selling, pausing...")
     stop_movement_and_attack()
     ms.execute("desk")
     time.sleep(2)
     while ms.container_get_items() is not None:
         time.sleep(0.5)
 
-    ms.echo("Selling done, resuming...")
-    time.sleep(1.5 + random.uniform(0, 0.5))
+    time.sleep(1 + random.uniform(0, 5))
     move_fun()
+    # ms.execute("\\wheat")
+    # os._exit(1)
 
 
 def read_pest_status():
@@ -322,7 +376,7 @@ def read_pest_status():
 
 def auto_pet_rule(chat_queue, move_fun, state):
     status = read_pest_status()
-    target_pet = "slug" if status == "ready" else "mooshroom"
+    target_pet = "mosquito" if status == "ready" else "rose dragon"
 
     if state["current_pet"] == target_pet:
         return
@@ -352,8 +406,29 @@ def kill_nearby_pests(
             )
             ms.player_inventory_select_slot(VACCUM_SLOT)
             smooth_look_at(entity.position[0], entity.position[1], entity.position[2])
+
             ms.player_press_use(True)
-            time.sleep(4)
+            start_time = time.time()
+
+            while (time.time() - start_time) < 4:
+                nearby_entities = ms.get_entities(
+                    nbt=True,
+                    max_distance=detection_range + 5,
+                    sort="nearest",
+                    limit=10,
+                    name="650",
+                )
+                if nearby_entities:
+                    break
+                should_break = True
+                entities = ms.get_entities(max_distance=detection_range, sort="nearest")
+                for entity in entities:
+                    if contains_pest_name(entity.name):
+                        should_break = False
+                if should_break:
+                    break
+                time.sleep(0.05)
+
             ms.player_press_use(False)
 
             smooth_orientation(YAW, PITCH)

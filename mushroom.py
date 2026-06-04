@@ -1,25 +1,25 @@
 import queue
+import random
 import threading
 import minescript as ms
 import time
 from farming_utils import (
-    auto_pet_rule,
-    flower_sugar_route,
+    container_watcher_thread,
+    # low_sack_listener_thread,
+    move_forward_and_attack,
     kill_nearby_pests,
-    low_sack_listener_thread,
-    move_backward_and_attack,
     sell_item_if_full,
     stop_movement_and_attack,
     check_farming_conditions,
     send_discord_message,
+    auto_pet_rule,
     use_spray,
+    container_movement_info,
 )
 from player_utils import chat_listener_thread, key_listener_thread, smooth_orientation
 
-YAW, PITCH = 135.2, 0.3
-
-VACCUM_SLOT = 2
-HOE_SLOT = 1
+INIT_YAW, PITCH = -90, 0.1
+YAW_ANGLE_ADJUSTMENT = 26.56
 
 state = {"current_pet": None}
 
@@ -28,7 +28,10 @@ killed_pests = set()
 chat_queue = queue.Queue(maxsize=10)
 
 
-def move_till(movement_fun, dest_x, dest_z, dest_y=None, ACCEPTABLE_DISPLACEMENT=1):
+def move_till(
+    movement_fun, dest_x, dest_z, YAW, dest_y=None, ACCEPTABLE_DISPLACEMENT=1
+):
+    container_movement_info["movement_fun"] = movement_fun
     if dest_y is None:
         _, current_y, _ = ms.player_position()
         dest_y = int(current_y)
@@ -46,34 +49,49 @@ def move_till(movement_fun, dest_x, dest_z, dest_y=None, ACCEPTABLE_DISPLACEMENT
             break
 
 
+def mushroom_route(curr_x, start_z, end_z):
+    YAW = INIT_YAW + YAW_ANGLE_ADJUSTMENT + random.uniform(0, 0.5)
+    smooth_orientation(YAW, PITCH)
+    move_till(move_forward_and_attack, curr_x + 6, end_z, YAW)
+
+    YAW = INIT_YAW - YAW_ANGLE_ADJUSTMENT + random.uniform(0, 0.5)
+    smooth_orientation(YAW, PITCH)
+    move_till(move_forward_and_attack, curr_x + 12, start_z, YAW)
+
+
 def main():
     threading.Thread(target=key_listener_thread, daemon=True).start()
     threading.Thread(
         target=chat_listener_thread, args=(chat_queue,), daemon=True
     ).start()
+    threading.Thread(target=container_watcher_thread, daemon=True).start()
     # threading.Thread(target=low_sack_listener_thread, daemon=True).start()
     count = 0
-    start_z, end_z = 145, 238
-    init_x = 141
+    start_z, end_z = 48, 143
+    init_x = -238
 
     while True:
         count += 1
-        send_discord_message(
-            f"Starting sunflower/moonflower farming run #{count}", mention=False
-        )
+        send_discord_message(f"Starting mushroom farming run #{count}", mention=False)
         ms.execute("warp garden")
         time.sleep(2.0)
-        smooth_orientation(YAW, PITCH)
+        # smooth_orientation(INIT_YAW+YAW_ANGLE_ADJUSTMENT, PITCH)
 
-        for i in range(15):
-            curr_x = init_x - (i * 6)
-            flower_sugar_route(
-                curr_x if curr_x >= 0 else curr_x + 1,
+        for i in range(7):
+            curr_x = init_x + (i * 12)
+            mushroom_route(
+                curr_x,
                 start_z,
                 end_z,
-                move_till,
             )
-        move_till(move_backward_and_attack, 51, end_z)
+
+        YAW = INIT_YAW + YAW_ANGLE_ADJUSTMENT + random.uniform(0, 0.5)
+        smooth_orientation(YAW, PITCH)
+        move_till(move_forward_and_attack, -148, end_z, YAW)
+
+        # YAW = INIT_YAW - YAW_ANGLE_ADJUSTMENT + random.uniform(0, 0.5)
+        # smooth_orientation(YAW, PITCH)
+        # move_till(move_forward_and_attack, -148, start_z, YAW)
 
 
 if __name__ == "__main__":

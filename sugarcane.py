@@ -51,16 +51,14 @@ def main():
     threading.Thread(
         target=chat_listener_thread, args=(chat_queue,), daemon=True
     ).start()
-    # threading.Thread(target=low_sack_listener_thread, daemon=True).start()
+    threading.Thread(target=low_sack_listener_thread, daemon=True).start()
     count = 0
     start_z, end_z = 145, 238
-    init_x = 141
+    init_x = -50
 
     while True:
         count += 1
-        send_discord_message(
-            f"Starting sunflower/moonflower farming run #{count}", mention=False
-        )
+        send_discord_message(f"Starting Sugarcane farming run #{count}", mention=False)
         ms.execute("warp garden")
         time.sleep(2.0)
         smooth_orientation(YAW, PITCH)
@@ -68,12 +66,13 @@ def main():
         for i in range(15):
             curr_x = init_x - (i * 6)
             flower_sugar_route(
-                curr_x if curr_x >= 0 else curr_x + 1,
+                # curr_x if curr_x >= 0 else curr_x + 1,
+                curr_x,
                 start_z,
                 end_z,
                 move_till,
             )
-        move_till(move_backward_and_attack, 51, end_z)
+        move_till(move_backward_and_attack, -140, end_z)
 
 
 if __name__ == "__main__":

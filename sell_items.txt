@@ -1,12 +1,26 @@
 vinyl
 rarefinder chip
 enchanted wheat
+enchanted melon slice
 enchanted wild rose
 enchanted nether wart
 enchanted seeds
 enchanted moonflower
 enchanted cactus
 enchanted sunflower
+enchanted carrot
 favorite book
 mantid claw
 overclocker
+beady eyes
+tool exp capsule
+clipped wings
+enchanted potato
+fire in a bottle
+quickdraw chip
+hypercharge chip
+chirping stereo
+soul sand
+synthesis chip
+evergreen chip
+wriggling larva

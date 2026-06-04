@@ -1,6 +1,8 @@
 import os
 import random
 import re
+
+from playsound3 import playsound
 import minescript as ms
 import time
 import math
@@ -43,6 +45,8 @@ tiers = [
     "salt",
     "overflow",
     "selling",
+    "blessed",
+    "low sack",
 ]
 
 
@@ -83,9 +87,15 @@ def chat_listener_thread(chat_queue):
                     chat_queue.get_nowait()  # drop oldest
                     chat_queue.put_nowait(cleaned)
                 if "[sacks]" not in msg:
-                    no_mention = "[npc]" in msg or "[skyhanni]" in msg
+                    no_mention = (
+                        "[npc]" in msg
+                        or "skyhanni" in msg
+                        or "6cd670b7-bd10-45d6-8daa-43651b5d136d" in msg
+                    )
                     if ":" in msg:
                         send_discord_message(cleaned, mention=not no_mention)
+                    elif "low sack" in msg or "selling" in msg:
+                        send_discord_message(cleaned)
                     elif any(tier in msg for tier in tiers):
                         send_discord_message(cleaned, mention=False)
 
@@ -116,12 +126,12 @@ def kill_game_process():
 def exit_fun(statement):
     stop_movement_and_attack()
     time.sleep(1.5 + random.uniform(0, 1))
-    ms.chat(random.choice(EXIT_MESSAGES))
+    # ms.chat(random.choice(EXIT_MESSAGES))
     time.sleep(2.5 + random.uniform(0, 1))
-    # playsound("./minescript/gong_sound.mp3")
+    playsound("./minescript/gong_sound.mp3")
     send_discord_message(statement)
     ms.echo(statement)
-    kill_game_process()
+    # kill_game_process()
     sys.exit(0)
 
 
@@ -135,8 +145,8 @@ def send_discord_message(content, mention=True):
 
     response = requests.post(WEBHOOK_URL, json=data)
 
-    if response.status_code != 204:
-        print(f"Failed to send message. Status code: {response.status_code}")
+    # if response.status_code != 204:
+    #     print(f"Failed to send message. Status code: {response.status_code}")
 
 
 def smooth_orientation(target_yaw, target_pitch, duration=0.5, steps=20):

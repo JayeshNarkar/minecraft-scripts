@@ -3,6 +3,8 @@ import threading
 import minescript as ms
 import time
 from farming_utils import (
+    container_watcher_thread,
+    # low_sack_listener_thread,
     move_backward_and_attack,
     move_forward_and_attack,
     move_left_and_attack,
@@ -17,6 +19,7 @@ from farming_utils import (
     move_right_and_attack,
     auto_pet_rule,
     use_spray,
+    container_movement_info,
 )
 from player_utils import chat_listener_thread, key_listener_thread, smooth_orientation
 
@@ -30,6 +33,7 @@ chat_queue = queue.Queue(maxsize=10)
 
 
 def move_till(movement_fun, dest_x, dest_z, dest_y=None, ACCEPTABLE_DISPLACEMENT=1):
+    container_movement_info["movement_fun"] = movement_fun
     if dest_y is None:
         _, current_y, _ = ms.player_position()
         dest_y = int(current_y)
@@ -90,6 +94,8 @@ def main():
     threading.Thread(
         target=chat_listener_thread, args=(chat_queue,), daemon=True
     ).start()
+    threading.Thread(target=container_watcher_thread, daemon=True).start()
+    # threading.Thread(target=low_sack_listener_thread, daemon=True).start()
     count = 0
     start_z, end_z = 48, 143
     init_x, end_x = 144, 234

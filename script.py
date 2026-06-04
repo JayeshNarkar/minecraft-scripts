@@ -26,7 +26,13 @@ def log_to_file(statement):
 
 
 if __name__ == "__main__":
-    auto_pet_rule(lambda: None, state)
+    # filter for strider entity
+    while True:
+        entities = ms.entities(nbt=True, sort="nearest", limit=10, name="650")
+        if entities:
+            log_to_file(str(entities))
+            ms.echo("650 logged")
+            break
     # try:
     #     minecraft = ms.java_class("net.minecraft.class_310")
     #     member = ms.java_member(minecraft, "getInstance")
